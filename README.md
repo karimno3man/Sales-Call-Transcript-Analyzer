@@ -29,10 +29,16 @@ A FastAPI service that analyzes sales call transcripts using GPT-4o and returns 
 pip install -r requirements.txt
 ```
 
-**2. Run the server:**
+**2. Create a `.env` file in the project root:**
+
+```
+OPENAI_API_KEY=sk-...
+```
+
+**3. Run the server:**
 
 ```bash
-uvicorn main:app --reload --port 8000 
+uvicorn main:app --reload
 ```
 
 The API will be available at `http://localhost:8000`.
@@ -58,7 +64,6 @@ In Postman, set the request to `POST /analyze-form` with **Body → form-data** 
 | Key | Value |
 |-----|-------|
 | `transcript` | *(paste transcript text directly)* |
-| `api_key` | `sk-...` |
 | `salesperson_name` | *(optional)* |
 
 ---

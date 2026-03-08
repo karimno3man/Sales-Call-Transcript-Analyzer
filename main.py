@@ -2,7 +2,12 @@ from fastapi import FastAPI, HTTPException, Form
 from pydantic import BaseModel
 from openai import OpenAI
 from typing import Optional
+from dotenv import load_dotenv
 import json
+import os
+
+load_dotenv()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 app = FastAPI(
     title="Sales Call Transcript Analyzer",
@@ -14,7 +19,6 @@ app = FastAPI(
 
 class TranscriptRequest(BaseModel):
     transcript: str
-    api_key: str
     salesperson_name: Optional[str] = None
 
 class SentimentTone(BaseModel):
@@ -92,13 +96,15 @@ Return ONLY valid JSON. No markdown, no explanation, no extra text."""
 
 # ─── Shared Logic ─────────────────────────────────────────────────────────────
 
-def run_analysis(transcript: str, api_key: str, salesperson_name: Optional[str]) -> dict:
+def run_analysis(transcript: str, salesperson_name: Optional[str]) -> dict:
+    if not OPENAI_API_KEY:
+        raise HTTPException(status_code=500, detail="OPENAI_API_KEY not set in .env file.")
     if not transcript.strip():
         raise HTTPException(status_code=400, detail="Transcript cannot be empty.")
     if len(transcript) < 50:
         raise HTTPException(status_code=400, detail="Transcript is too short to analyze.")
     try:
-        client = OpenAI(api_key=api_key)
+        client = OpenAI(api_key=OPENAI_API_KEY)
         user_content = f"Salesperson: {salesperson_name or 'Unknown'}\n\nTranscript:\n{transcript}"
         response = client.chat.completions.create(
             model="gpt-4o",
@@ -143,17 +149,16 @@ def health():
 @app.post("/analyze", response_model=TranscriptAnalysis)
 def analyze_json(request: TranscriptRequest):
     """Analyze via raw JSON body. Use this when calling from code/apps."""
-    return run_analysis(request.transcript, request.api_key, request.salesperson_name)
+    return run_analysis(request.transcript, request.salesperson_name)
 
 @app.post("/analyze-form", response_model=TranscriptAnalysis)
 def analyze_form(
     transcript: str = Form(...),
-    api_key: str = Form(...),
     salesperson_name: Optional[str] = Form(None)
 ):
     """
     Analyze via form-data — RECOMMENDED FOR POSTMAN.
-    Body > form-data, then add keys: transcript, api_key, salesperson_name
+    Body > form-data, then add keys: transcript, salesperson_name
     Paste the transcript directly into the Value field — no escaping needed.
     """
-    return run_analysis(transcript, api_key, salesperson_name)
+    return run_analysis(transcript, salesperson_name)
